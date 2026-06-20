@@ -19,10 +19,12 @@ class Primitive {
 
 class Circle : public Primitive {
  public:
-  Circle(const Point& center, double radius) : center_(center), radius_(radius) {}
+  Circle(const Point& center, double radius)
+      : center_(center), radius_(radius) {}
   void Draw(double offsetX = 0.0, double offsetY = 0.0) const override {
-    std::cout << "Drawing a circle at (" << center_.x + offsetX << ", " << center_.y + offsetY << ") with radius " << radius_ << std::endl;
-
+    std::cout << "Drawing a circle at (" << center_.x + offsetX << ", "
+              << center_.y + offsetY << ") with radius " << radius_
+              << std::endl;
   }
 
  private:
@@ -32,9 +34,12 @@ class Circle : public Primitive {
 
 class Square : public Primitive {
  public:
-  Square(const Point& topLeft, double sideLength) : topLeft_(topLeft), sideLength_(sideLength) {}
+  Square(const Point& topLeft, double sideLength)
+      : topLeft_(topLeft), sideLength_(sideLength) {}
   void Draw(double offsetX = 0.0, double offsetY = 0.0) const override {
-    std::cout << "Drawing a square at (" << topLeft_.x + offsetX << ", " << topLeft_.y + offsetY << ") with side length " << sideLength_ << std::endl;
+    std::cout << "Drawing a square at (" << topLeft_.x + offsetX << ", "
+              << topLeft_.y + offsetY << ") with side length " << sideLength_
+              << std::endl;
   }
 
  private:
@@ -48,7 +53,9 @@ class Rectangle : public Primitive {
       : topLeft_(topLeft), width_(width), height_(height) {}
 
   void Draw(double offsetX = 0.0, double offsetY = 0.0) const override {
-    std::cout << "Drawing a rectangle at (" << topLeft_.x + offsetX << ", " << topLeft_.y + offsetY << ") with width " << width_ << " and height " << height_ << std::endl;
+    std::cout << "Drawing a rectangle at (" << topLeft_.x + offsetX << ", "
+              << topLeft_.y + offsetY << ") with width " << width_
+              << " and height " << height_ << std::endl;
   }
 
  private:
@@ -61,7 +68,9 @@ class Line : public Primitive {
  public:
   Line(const Point& start, const Point& end) : start_(start), end_(end) {}
   void Draw(double offsetX = 0.0, double offsetY = 0.0) const override {
-    std::cout << "Drawing a line from (" << start_.x + offsetX << ", " << start_.y + offsetY << ") to (" << end_.x + offsetX << ", " << end_.y + offsetY << ")" << std::endl;
+    std::cout << "Drawing a line from (" << start_.x + offsetX << ", "
+              << start_.y + offsetY << ") to (" << end_.x + offsetX << ", "
+              << end_.y + offsetY << ")" << std::endl;
   }
 
  private:
@@ -106,18 +115,26 @@ class Document {
 // VIEW
 // -------------------------
 
+struct Camera {
+  double offsetX = 0.0;
+  double offsetY = 0.0;
+};
+
 class EditorView {
  public:
+  void SetCameraOffset(double dx, double dy) {
+    camera_.offsetX += dx;
+    camera_.offsetY += dy;
+  }
+
   void Render(const Document& doc) {
-    const auto& primitives = doc.GetPrimitives();
-    if (primitives.empty()) {
-      std::cout << "No primitives to render." << std::endl;
-      return;
-    }
-    for (const auto& primitive : primitives) {
-      primitive->Draw();
+    for (const auto& primitive : doc.GetPrimitives()) {
+      primitive->Draw(camera_.offsetX, camera_.offsetY);
     }
   }
+
+ private:
+  Camera camera_;
 };
 
 // -------------------------
@@ -139,6 +156,8 @@ class EditorController {
   void OpenDocument(const std::string& filepath) {
     std::cout << "Opening document: " << filepath << std::endl;
     model_.SetPath(filepath);
+    // Emulating load of a document by adding a primitive for demonstration
+    // purposes
     model_.AddPrimitive(std::make_unique<Circle>(Point{0.0, 0.0}, 1.0));
     view_.Render(model_);
   }
@@ -158,6 +177,11 @@ class EditorController {
   void DeletePrimitive(size_t index) {
     std::cout << "Deleting a primitive from the document." << std::endl;
     model_.DeletePrimitive(index);
+    view_.Render(model_);
+  }
+
+  void PanCamera(double dx, double dy) {
+    view_.SetCameraOffset(dx, dy);
     view_.Render(model_);
   }
 
@@ -198,10 +222,14 @@ int main() {
   EditorView view;
   EditorController controller(doc, view);
   OnClick_NewDocument(controller);
-  OnClick_AddPrimitive(controller, std::make_unique<Circle>(Point{0.0, 0.0}, 1.0));
-  OnClick_AddPrimitive(controller, std::make_unique<Square>(Point{0.0, 0.0}, 1.0));
-  OnClick_AddPrimitive(controller, std::make_unique<Rectangle>(Point{0.0, 0.0}, 1.0, 2.0));
-  OnClick_AddPrimitive(controller, std::make_unique<Line>(Point{0.0, 0.0}, Point{1.0, 1.0}));
+  OnClick_AddPrimitive(controller,
+                       std::make_unique<Circle>(Point{0.0, 0.0}, 1.0));
+  OnClick_AddPrimitive(controller,
+                       std::make_unique<Square>(Point{0.0, 0.0}, 1.0));
+  OnClick_AddPrimitive(controller,
+                       std::make_unique<Rectangle>(Point{0.0, 0.0}, 1.0, 2.0));
+  OnClick_AddPrimitive(
+      controller, std::make_unique<Line>(Point{0.0, 0.0}, Point{1.0, 1.0}));
   OnClick_DeletePrimitive(controller, 1);
   OnClick_SaveDocument(controller, "output.txt");
 
