@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -13,7 +14,8 @@ struct Point {
 
 class Primitive {
  public:
-  virtual void Draw(double offsetX = 0.0, double offsetY = 0.0) const = 0;
+  virtual void Draw(double offsetX = 0.0, double offsetY = 0.0,
+                    double zoom = 1.0) const = 0;
   virtual ~Primitive() = default;
 };
 
@@ -21,9 +23,13 @@ class Circle : public Primitive {
  public:
   Circle(const Point& center, double radius)
       : center_(center), radius_(radius) {}
-  void Draw(double offsetX = 0.0, double offsetY = 0.0) const override {
-    std::cout << "Drawing a circle at (" << center_.x + offsetX << ", "
-              << center_.y + offsetY << ") with radius " << radius_
+  void Draw(double offsetX = 0.0, double offsetY = 0.0,
+            double zoom = 1.0) const override {
+    const double screenX = (center_.x + offsetX) * zoom;
+    const double screenY = (center_.y + offsetY) * zoom;
+    const double screenRadius = radius_ * zoom;
+    std::cout << "Drawing a circle at (" << screenX << ", "
+              << screenY << ") with radius " << screenRadius
               << std::endl;
   }
 
@@ -36,9 +42,13 @@ class Square : public Primitive {
  public:
   Square(const Point& topLeft, double sideLength)
       : topLeft_(topLeft), sideLength_(sideLength) {}
-  void Draw(double offsetX = 0.0, double offsetY = 0.0) const override {
-    std::cout << "Drawing a square at (" << topLeft_.x + offsetX << ", "
-              << topLeft_.y + offsetY << ") with side length " << sideLength_
+  void Draw(double offsetX = 0.0, double offsetY = 0.0,
+            double zoom = 1.0) const override {
+    const double screenX = (topLeft_.x + offsetX) * zoom;
+    const double screenY = (topLeft_.y + offsetY) * zoom;
+    const double screenSide = sideLength_ * zoom;
+    std::cout << "Drawing a square at (" << screenX << ", "
+              << screenY << ") with side length " << screenSide
               << std::endl;
   }
 
@@ -52,10 +62,15 @@ class Rectangle : public Primitive {
   Rectangle(const Point& topLeft, double width, double height)
       : topLeft_(topLeft), width_(width), height_(height) {}
 
-  void Draw(double offsetX = 0.0, double offsetY = 0.0) const override {
-    std::cout << "Drawing a rectangle at (" << topLeft_.x + offsetX << ", "
-              << topLeft_.y + offsetY << ") with width " << width_
-              << " and height " << height_ << std::endl;
+  void Draw(double offsetX = 0.0, double offsetY = 0.0,
+            double zoom = 1.0) const override {
+    const double screenX = (topLeft_.x + offsetX) * zoom;
+    const double screenY = (topLeft_.y + offsetY) * zoom;
+    const double screenWidth = width_ * zoom;
+    const double screenHeight = height_ * zoom;
+    std::cout << "Drawing a rectangle at (" << screenX << ", "
+              << screenY << ") with width " << screenWidth
+              << " and height " << screenHeight << std::endl;
   }
 
  private:
@@ -67,10 +82,15 @@ class Rectangle : public Primitive {
 class Line : public Primitive {
  public:
   Line(const Point& start, const Point& end) : start_(start), end_(end) {}
-  void Draw(double offsetX = 0.0, double offsetY = 0.0) const override {
-    std::cout << "Drawing a line from (" << start_.x + offsetX << ", "
-              << start_.y + offsetY << ") to (" << end_.x + offsetX << ", "
-              << end_.y + offsetY << ")" << std::endl;
+  void Draw(double offsetX = 0.0, double offsetY = 0.0,
+            double zoom = 1.0) const override {
+    const double startX = (start_.x + offsetX) * zoom;
+    const double startY = (start_.y + offsetY) * zoom;
+    const double endX = (end_.x + offsetX) * zoom;
+    const double endY = (end_.y + offsetY) * zoom;
+    std::cout << "Drawing a line from (" << startX << ", "
+              << startY << ") to (" << endX << ", "
+              << endY << ")" << std::endl;
   }
 
  private:
@@ -118,20 +138,40 @@ class Document {
 struct Camera {
   double offsetX = 0.0;
   double offsetY = 0.0;
+  double zoom = 1.0;
 };
 
 class EditorView {
  public:
-  void SetCameraOffset(double dx, double dy) {
-    camera_.offsetX += dx;
-    camera_.offsetY += dy;
+  void PanByScreenDelta(double dx, double dy) {
+    camera_.offsetX += dx / camera_.zoom;
+    camera_.offsetY += dy / camera_.zoom;
+  }
+
+  void ZoomAtScreenPoint(double factor, double screenX, double screenY) {
+    constexpr double kMinZoom = 0.1;
+    constexpr double kMaxZoom = 10.0;
+
+    const double oldZoom = camera_.zoom;
+    const double newZoom = std::clamp(oldZoom * factor, kMinZoom, kMaxZoom);
+    if (newZoom == oldZoom) {
+      return;
+    }
+
+    camera_.offsetX += screenX / newZoom - screenX / oldZoom;
+    camera_.offsetY += screenY / newZoom - screenY / oldZoom;
+    camera_.zoom = newZoom;
   }
 
   void Render(const Document& doc) {
     for (const auto& primitive : doc.GetPrimitives()) {
-      primitive->Draw(camera_.offsetX, camera_.offsetY);
+      primitive->Draw(camera_.offsetX, camera_.offsetY, camera_.zoom);
     }
   }
+
+  Camera GetCamera() const { return camera_; }
+
+  void SetCamera(const Camera& camera) { camera_ = camera; }
 
  private:
   Camera camera_;
@@ -169,19 +209,28 @@ class EditorController {
   }
 
   void AddPrimitive(std::unique_ptr<Primitive> primitive) {
-    std::cout << "Adding a primitive to the document." << std::endl;
     model_.AddPrimitive(std::move(primitive));
     view_.Render(model_);
   }
 
   void DeletePrimitive(size_t index) {
-    std::cout << "Deleting a primitive from the document." << std::endl;
     model_.DeletePrimitive(index);
     view_.Render(model_);
   }
 
   void PanCamera(double dx, double dy) {
-    view_.SetCameraOffset(dx, dy);
+    view_.PanByScreenDelta(dx, dy);
+    view_.Render(model_);
+  }
+
+  void ZoomCameraAt(double factor, double anchorScreenX,
+                    double anchorScreenY) {
+    view_.ZoomAtScreenPoint(factor, anchorScreenX, anchorScreenY);
+    view_.Render(model_);
+  }
+
+  void ResetCamera() {
+    view_.SetCamera({0.0, 0.0});
     view_.Render(model_);
   }
 
@@ -231,9 +280,23 @@ int main() {
   OnClick_AddPrimitive(
       controller, std::make_unique<Line>(Point{0.0, 0.0}, Point{1.0, 1.0}));
   OnClick_DeletePrimitive(controller, 1);
-  OnClick_SaveDocument(controller, "output.txt");
 
-  view.Render(doc);
+  std::cout << "-------------Current camera state: "
+            << "offsetX = " << view.GetCamera().offsetX
+            << ", offsetY = " << view.GetCamera().offsetY
+            << ", zoom = " << view.GetCamera().zoom << std::endl;
+  controller.PanCamera(100.0, 50.0);
+    std::cout << "-------------Current camera state: "
+            << "offsetX = " << view.GetCamera().offsetX
+            << ", offsetY = " << view.GetCamera().offsetY
+            << ", zoom = " << view.GetCamera().zoom << std::endl;
+  controller.ZoomCameraAt(2.0, 0.0, 0.0);
+    std::cout << "-------------Current camera state: "
+            << "offsetX = " << view.GetCamera().offsetX
+            << ", offsetY = " << view.GetCamera().offsetY
+            << ", zoom = " << view.GetCamera().zoom << std::endl;
+
+  OnClick_SaveDocument(controller, "output.txt");
 
   return 0;
 }
