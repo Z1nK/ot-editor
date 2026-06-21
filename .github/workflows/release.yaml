@@ -1,4 +1,4 @@
-name: 'C++ CI print_ip'
+name: 'C++ CI ot-editor'
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: deb-package
-          path: print_ip-0.0.${{ github.run_number }}-Linux.deb
+          path: ot-editor-0.0.${{ github.run_number }}-Linux.deb
           retention-days: 1
 
   release:
