@@ -3,6 +3,7 @@ add_executable(ot-editor
     primitive.cpp
     model.cpp
     view.cpp
+    renderer.cpp
     controller.cpp
     ui_handlers.cpp
 )

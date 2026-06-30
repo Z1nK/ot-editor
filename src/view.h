@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model.h"
+#include "renderer.h"
 
 struct Camera {
   double offsetX = 0.0;

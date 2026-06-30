@@ -24,8 +24,9 @@ void EditorView::ZoomAtScreenPoint(double factor, double screenX,
 }
 
 void EditorView::Render(const Document& doc) {
+  ConsoleRenderer renderer(camera_);
   for (const auto& primitive : doc.GetPrimitives()) {
-    primitive->Draw(camera_.offsetX, camera_.offsetY, camera_.zoom);
+    primitive->Accept(renderer);
   }
 }
 

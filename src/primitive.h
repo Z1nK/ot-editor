@@ -1,5 +1,7 @@
 #pragma once
 
+#include "primitive_visitor.h"
+
 struct Point {
   double x;
   double y;
@@ -7,16 +9,16 @@ struct Point {
 
 class Primitive {
  public:
-  virtual void Draw(double offsetX = 0.0, double offsetY = 0.0,
-                    double zoom = 1.0) const = 0;
+  virtual void Accept(IPrimitiveVisitor& visitor) const = 0;
   virtual ~Primitive() = default;
 };
 
 class Circle : public Primitive {
  public:
   Circle(const Point& center, double radius);
-  void Draw(double offsetX = 0.0, double offsetY = 0.0,
-            double zoom = 1.0) const override;
+  void Accept(IPrimitiveVisitor& visitor) const override;
+  Point GetCenter() const;
+  double GetRadius() const;
 
  private:
   Point center_;
@@ -26,8 +28,9 @@ class Circle : public Primitive {
 class Square : public Primitive {
  public:
   Square(const Point& topLeft, double sideLength);
-  void Draw(double offsetX = 0.0, double offsetY = 0.0,
-            double zoom = 1.0) const override;
+  void Accept(IPrimitiveVisitor& visitor) const override;
+  Point GetTopLeft() const;
+  double GetSideLength() const;
 
  private:
   Point topLeft_;
@@ -37,8 +40,10 @@ class Square : public Primitive {
 class Rectangle : public Primitive {
  public:
   Rectangle(const Point& topLeft, double width, double height);
-  void Draw(double offsetX = 0.0, double offsetY = 0.0,
-            double zoom = 1.0) const override;
+  void Accept(IPrimitiveVisitor& visitor) const override;
+  Point GetTopLeft() const;
+  double GetWidth() const;
+  double GetHeight() const;
 
  private:
   Point topLeft_;
@@ -49,8 +54,9 @@ class Rectangle : public Primitive {
 class Line : public Primitive {
  public:
   Line(const Point& start, const Point& end);
-  void Draw(double offsetX = 0.0, double offsetY = 0.0,
-            double zoom = 1.0) const override;
+  void Accept(IPrimitiveVisitor& visitor) const override;
+  Point GetStart() const;
+  Point GetEnd() const;
 
  private:
   Point start_;
